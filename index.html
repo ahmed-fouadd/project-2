@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+
+<style>
+  body {
+    margin: 0;
+    height: 100vh;
+    display: grid;
+    place-items: center;
+    background: #17171c;
+  }
+
+  #ticket {
+    position: relative;
+    width: 400px;
+    height: 300px;
+  }
+
+  #envelope {
+    position: absolute;
+    z-index: 10;
+    width: 120px;
+    left: 140px;
+    top: 90px;
+    padding: 0;
+    border: 0;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  #envelope img {
+    display: block;
+    width: 100%;
+  }
+
+  #welcome,
+  #agreement {
+    position: absolute;
+    z-index: 20;
+    left: 20px;
+    right: 20px;
+    text-align: center;
+    font: bold 18px sans-serif;
+  }
+
+  #welcome {
+    top: 110px;
+    color: #17171c;
+    pointer-events: none;
+  }
+
+  #agreement {
+    top: 225px;
+    color: #17171c;
+  }
+</style>
+
+</head>
+<body>
+
+<div id="ticket">
+  <p id="welcome">Welcome to your new apartment! Your rent is 0230420384$. Peel away at the paint.</p>
+  <button id="envelope" type="button" aria-label="Open rent agreement" hidden>
+    <img src="old-envelope-1388592860uij.jpg" alt="">
+  </button>
+  <p id="agreement" hidden>19xx rent agreement</p>
+</div>
+
+<!-- /////////////////////////////////// -->
+<!-- This is internal JS -->
+<!-- /////////////////////////////////// -->
+<script>
+
+// define the layers of the scratch ticket, each with a color and text
+// top layer first, prize last
+const layers = [
+  'Wall white paint stucco plaster texture seamless.jpg',
+  'seamless-texture-of-white-cement-wall-a-rough-surface-peeling-paint-with-space-for-text-for-a-background-free-photo.jpg',
+  'il_570xN.547934805_ifz6.webp'
+];
+const ticket = document.getElementById('ticket');
+const envelope = document.getElementById('envelope');
+const agreement = document.getElementById('agreement');
+const welcome = document.getElementById('welcome');
+let current = 0; // index of the current scratchable layer
+
+// make one canvas per layer and paint it
+const canvases = layers.map(function (layer, i) { // layer.map creates a canvas for each layer
+
+  // create a new canvas element for this layer
+  const c = document.createElement('canvas');
+  c.width = 400;
+  c.height = 300;
+  c.style.cssText = 'position:absolute; left:0; top:0; z-index:' + (layers.length - i); // set the stacking order of the canvas layers
+  const ctx = c.getContext('2d', { willReadFrequently: true }); // get 2D drawing context with frequent read optimization
+
+//   // fill the canvas with the layer color and draw the text
+//   ctx.fillStyle = layer[0];
+//   ctx.fillRect(0, 0, 400, 300);
+//   ctx.fillStyle = 'white';
+//   ctx.font = 'bold 40px sans-serif';
+//   ctx.textAlign = 'center';
+//   ctx.fillText(layer[1], 200, 160);
+
+
+  const img = new Image();
+img.onload = function () {
+  ctx.drawImage(img, 0, 0, c.width, c.height);
+};
+img.src = layer;
+  ticket.appendChild(c); // add the canvas to the ticket container
+  return c; // return the canvas element for this layer
+});
+
+// scratch the current layer (the last layer is the prize, so it never scratches)
+ticket.addEventListener('pointermove', function (e) { // pointer is more versatile than mouse or touch alone
+
+  // ignore if no buttons pressed or if we're on the last layer (the prize)
+  if (e.buttons === 0 || current >= layers.length - 1) {
+    return; // this return exits the pointermove event and ignores the code below if no buttons are pressed or if we're on the last layer
+  }
+
+  // get the bounding rectangle of the ticket container and the context of the current canvas
+  const rect = ticket.getBoundingClientRect();
+  const ctx = canvases[current].getContext('2d');
+
+  // set the composite mode to 'destination-out' so that drawing will erase the current layer
+  ctx.globalCompositeOperation = 'destination-out';
+  ctx.beginPath();
+  ctx.arc(e.clientX - rect.left, e.clientY - rect.top, 22, 0, Math.PI * 2);
+  ctx.fill();
+});
+
+ticket.addEventListener('pointerdown', function () {
+  welcome.hidden = true;
+});
+
+// when the finger or mouse lifts, check if the layer is fully gone
+ticket.addEventListener('pointerup', function () {
+
+  // ignore if we're on the last layer (the prize)
+  if (current >= layers.length - 1) {
+    return;
+  }
+
+  // get the image data of the current canvas to check how much is left
+  const data = canvases[current].getContext('2d').getImageData(0, 0, 400, 300).data;
+  let pixelsleft = 0;
+  for (let i = 3; i < data.length; i += 4) {
+    if (data[i] > 0) {
+      pixelsleft++;
+    }
+  }
+
+  // if less than 1% of the pixels remain, remove the current canvas and move to the next layer
+  if (pixelsleft < 1200) {              // under 1% of the pixels remain
+    canvases[current].remove();   // hide it - this effectively removes the scratched layer from the html structure
+    current++;                    // next canvas is now scratchable - remember the number created at the top?
+    if (current === layers.length - 1) {
+      envelope.hidden = false;
+    }
+  }
+  // optionally, you could trigger some event or callback here to notify that a layer was cleared
+});
+
+envelope.addEventListener('click', function () {
+  agreement.hidden = false;
+});
+
+</script>
+</body>
+</html>
